@@ -2,7 +2,7 @@
 
 Application and dependencies bootstrap for node.js.
 
-## A super-minimal and robust way to boot and compose application dependencies using ES6.
+## A super-minimal way to boot and compose application dependencies using ES6.
 
 Bootwire is a very simple library that leverages ES6 destructuring
 to provide a _no-black-magick-please_ way to boot node js applications
@@ -15,11 +15,17 @@ and perform dependency injection.
 - Predictable top-down flow.
 - IoC with plain old functions and constructors.
 - No `require` hijacking.
-- No `module.exports['@something-magick-unnecessary-and-weird-here']`
+- No `module.exports['@something-magick-and-weird-here']`
+- Wire components together not to the IoC container
 
 <!-- toc -->
 
-- [What is it?](#what-is-it)
+- [Getting Started](#getting-started)
+    + [Dependency injection](#dependency-injection)
+- [Usage patterns for complex applications](#usage-patterns-for-complex-applications)
+    + [Split bootstrap into phases](#split-bootstrap-into-phases)
+    + [Bootstrap of many components](#bootstrap-of-many-components)
+    + [Wiring classes and services](#wiring-classes-and-services)
 - [Api](#api)
   * [Classes](#classes)
   * [Functions](#functions)
@@ -29,28 +35,50 @@ and perform dependency injection.
     + [context.context ⇒ [Context](#Context)](#contextcontext-%E2%87%92-context%23context)
     + [context.set(keyOrObject, value)](#contextsetkeyorobject-value)
     + [context.provide(key, fn) ⇒ Promise](#contextprovidekey-fn-%E2%87%92-promise)
-    + [context.run(fn) ⇒ Promise](#contextrunfn-%E2%87%92-promise)
+    + [context.run(...fns) ⇒ Promise](#contextrunfns-%E2%87%92-promise)
     + [context.get(key, [defaultValue]) ⇒ Any](#contextgetkey-defaultvalue-%E2%87%92-any)
   * [bootwire(bootAndWireFn) ⇒ [App](#App)](#bootwirebootandwirefn-%E2%87%92-app%23app)
 
 <!-- tocstop -->
 
-## What is it?
+## Getting Started
 
-Bootwire provides a way to create an application context (a plain object that
-exposes a few methods to manipulate it), and pass it down to a boot procedure.
+Bootwire provides a way to create an **application context** and pass it down to a **boot procedure**.
+
+The __context object__ is just an object that exposes a few methods to manipulate and use it:
+
+- `set`: set one or many properties
+- `provide`: set a property to the result of the invocation of a provider function.
+- `run`: run a function passing the context as parameter
+- `get`: get a value in the context by key or by path
 
 Using `set` and `provide` on the context object will ensure that all of its properties **will be only set once**, allowing to inject providers, services connections, configs and so on during tests.
 
-The boot procedure is a function that is intended to be the single starting point of
-an application:
+The __boot procedure__ to which the context is passed is a function that acts as the single starting point of an application.
+
+#### Dependency injection
+
+As opposed to many IoC containers `bootwire` takes a radical approach to handle dependencies:
+
+- Dependencies resolution is not lazy: all of the components are wired together during the boot phase.
+- Dependency injection follows one and only one simple rule: if a dependency is already set it will not be set again.
+
+Which result into an extremely simple way to replace a component or a setting during tests: just set it before the boot phase.
+
+``` js
+// index.js
+
+require('./app').boot().catch(console.error);
+```
 
 ``` js
 // app.js
+
 const bootwire = require('bootwire');
 
-module.exports = bootwire(({provide, set, run}) => {
+function bootProcedure({provide, set, run} /* this is the context object destructured */) {
   set({
+    logger: require('winston'),
     config: require('./config')
   });
 
@@ -58,13 +86,26 @@ module.exports = bootwire(({provide, set, run}) => {
     return await MongoClient.connect(config.mongodbUrl);
   });
 
+  await provide('userRepository', async function({db}) {
+    return new UserRepository({db});
+  });
+
   await run(startExpress);
-});
+}
+
+module.exports = bootwire(bootProcedure);
 ```
 
 ``` js
-// index.js
-require('./app').boot().catch(console.error);
+// user.routes.js
+
+module.exports = function({router, userRepository}) {
+
+  router.get('/users', async function(req, res) {
+    res.json(await userRepository.find());
+  });
+
+};
 ```
 
 Integration tests are now extremely easy:
@@ -81,6 +122,22 @@ it('does something', async function() {
   });
 
   // ...
+});
+```
+
+And unit tests as well:
+
+``` js
+const UserRepository = require('./services/UserRepository');
+
+it('retrieves all the users', async function() {
+  const repo = new UserRepository({db: {
+    find() {
+      return Promise.resolve(usersFixture);
+    }
+  }});
+
+  deepEqual(await repo.find(), expectedUsers);
 });
 ```
 
@@ -106,6 +163,123 @@ it('does something', async function() {
 
   // ...
 });
+```
+
+## Usage patterns for complex applications
+
+#### Split bootstrap into phases
+
+``` js
+// ./boot/index.js
+
+const {promisify} = require('util');
+const express = require('express');
+const winston = require('winston');
+
+const setupRoutes = require('./setupRoutes');
+const setupMiddlewares = require('./setupMiddlewares');
+const setupErrorHandlers = require('./setupErrorHandlers');
+
+module.exports = function({run, context}) {
+  set({
+    config: require('./config'),
+    app: express(),
+    logger: winston
+  });
+
+  await run(
+    setupMiddlewares,
+    setupRoutes,
+    setupErrorHandlers,
+    async function({app, logger}) {
+      await promisify(app.listen)(config.port);
+      logger(`Application running on port ${config.port}`);
+    }
+  );
+};
+```
+
+#### Bootstrap of many components
+
+``` js
+// ./boot/index.js
+
+const {promisify} = require('util');
+const express = require('express');
+const winston = require('winston');
+
+module.exports = function({run, context}) {
+  set({
+    config: require('./config'),
+    app: express(),
+    logger: winston
+  });
+
+  const submodules = ['module1', 'module2', 'module3'];
+
+  for (submodule of submodules) {
+    await run(submodule.boot);
+  }
+
+  await run(async function({app, logger}) {
+    await promisify(app.listen)(config.port);
+    logger(`Application running on port ${config.port}`);
+  });
+};
+```
+
+#### Wiring classes and services
+
+One way to perform IoC without any magic container is to use explicitly the
+constructor of services to inject dependencies.
+
+Although it may seem a tight constraint it is actually a good way to create
+independent components that are easy to reuse in different context
+and applications.
+
+This explicit and __manual__ injection is intended and is necessary to achieve one of
+the goal of `bootwire`: don't require components to depend on the dependency injection
+framework.
+
+``` js
+// boot/index.js
+
+await provide('db', async function({config}) {
+  return await MongoClient.connect(config.mongodbUrl);
+});
+
+await provide('userRepository', async function({db}) {
+  return new UserRepository({db});
+});
+```
+
+``` js
+// services/UserRepository.js
+
+class UserRepository {
+  constructor({db}) {
+    this.collection = db.collection('users');
+  }
+
+  find() {
+    return this.collection.find().toArray();
+  }
+}
+```
+
+Note how the `UserRepository` class is completely usable without `bootwire`:
+
+``` js
+// tasks/dumpUsers.js
+
+async main() {
+  const db = await MongoClient.connect(process.env.MONGODB_URL);
+  const repo = UserRepository({db});
+  const users = await repo.find();
+  console.info(JSON.stringify(users, null, 2));
+}
+
+main().catch(console.error);
 ```
 
 ## Api
@@ -169,14 +343,14 @@ describe(&#39;app&#39;, function() {
 ### App : <code>Object</code>
 App is a bootable application.
 
-**Kind**: global class
+**Kind**: global class  
 <a name="App+boot"></a>
 
 #### app.boot(...initialContext) ⇒ <code>Promise</code>
 Start an application with an initialContext
 
-**Kind**: instance method of [<code>App</code>](#App)
-**Returns**: <code>Promise</code> - A promise resolving to Context when the boot procedure will complete.
+**Kind**: instance method of [<code>App</code>](#App)  
+**Returns**: <code>Promise</code> - A promise resolving to Context when the boot procedure will complete.  
 
 | Param | Type | Description |
 | --- | --- | --- |
@@ -189,13 +363,13 @@ Context is the main application context object. It acts as dependency
 container and is intended to be passed down through all the initialization
 procedure.
 
-**Kind**: global class
+**Kind**: global class  
 
 * [Context](#Context) : <code>Object</code>
     * [.context](#Context+context) ⇒ [<code>Context</code>](#Context)
     * [.set(keyOrObject, value)](#Context+set)
     * [.provide(key, fn)](#Context+provide) ⇒ <code>Promise</code>
-    * [.run(fn)](#Context+run) ⇒ <code>Promise</code>
+    * [.run(...fns)](#Context+run) ⇒ <code>Promise</code>
     * [.get(key, [defaultValue])](#Context+get) ⇒ <code>Any</code>
 
 <a name="Context+context"></a>
@@ -216,8 +390,8 @@ module.exports = function setupRoutes({app, context}) {
 }
 ```
 
-**Kind**: instance property of [<code>Context</code>](#Context)
-**Returns**: [<code>Context</code>](#Context) - the context object itself
+**Kind**: instance property of [<code>Context</code>](#Context)  
+**Returns**: [<code>Context</code>](#Context) - the context object itself  
 <a name="Context+set"></a>
 
 #### context.set(keyOrObject, value)
@@ -236,7 +410,7 @@ set({
 });
 ```
 
-**Kind**: instance method of [<code>Context</code>](#Context)
+**Kind**: instance method of [<code>Context</code>](#Context)  
 
 | Param | Type | Description |
 | --- | --- | --- |
@@ -256,9 +430,9 @@ The function to be evaluated can be synchronous or asynchronous. In either
 cases `provide` returns a Promise to wait for to be sure the assignment took
 place (or has been rejected).
 
-**Kind**: instance method of [<code>Context</code>](#Context)
+**Kind**: instance method of [<code>Context</code>](#Context)  
 **Returns**: <code>Promise</code> - a promise that will be resolved once `provide` has completed the
-        assignment or refused to assign.
+        assignment or refused to assign.  
 
 | Param | Type | Description |
 | --- | --- | --- |
@@ -267,15 +441,15 @@ place (or has been rejected).
 
 <a name="Context+run"></a>
 
-#### context.run(fn) ⇒ <code>Promise</code>
-Run invokes an asynchronous function passing the context as first parameter.
+#### context.run(...fns) ⇒ <code>Promise</code>
+Run invokes one or more asynchronous function passing the context as first parameter.
 
-**Kind**: instance method of [<code>Context</code>](#Context)
-**Returns**: <code>Promise</code> - a promise that will be resolved once `fn` will complete.
+**Kind**: instance method of [<code>Context</code>](#Context)  
+**Returns**: <code>Promise</code> - a promise that will be resolved once `fn` will complete.  
 
 | Param | Type | Description |
 | --- | --- | --- |
-| fn | <code>function</code> | the function to be evaluated. Context will be passed as param to         this function. |
+| ...fns | <code>function</code> | the function or functions to be evaluated. Context will be passed as param. |
 
 <a name="Context+get"></a>
 
@@ -290,8 +464,8 @@ const info = await request(`http://localhost:${port}/api/info`);
 // ...
 ```
 
-**Kind**: instance method of [<code>Context</code>](#Context)
-**Returns**: <code>Any</code> - the value if found or `defaultValue`.
+**Kind**: instance method of [<code>Context</code>](#Context)  
+**Returns**: <code>Any</code> - the value if found or `defaultValue`.  
 
 | Param | Type | Description |
 | --- | --- | --- |
@@ -341,8 +515,8 @@ describe('app', function() {
 });
 ```
 
-**Kind**: global function
-**Returns**: [<code>App</code>](#App) - A bootable `App` instance.
+**Kind**: global function  
+**Returns**: [<code>App</code>](#App) - A bootable `App` instance.  
 
 | Param | Type | Description |
 | --- | --- | --- |
