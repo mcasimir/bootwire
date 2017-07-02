@@ -347,14 +347,14 @@ describe(&#39;app&#39;, function() {
 ### App : <code>Object</code>
 App is a bootable application.
 
-**Kind**: global class
+**Kind**: global class  
 <a name="App+boot"></a>
 
 #### app.boot(...initialContext) ⇒ <code>Promise</code>
 Start an application with an initialContext
 
-**Kind**: instance method of [<code>App</code>](#App)
-**Returns**: <code>Promise</code> - A promise resolving to Context when the boot procedure will complete.
+**Kind**: instance method of [<code>App</code>](#App)  
+**Returns**: <code>Promise</code> - A promise resolving to Context when the boot procedure will complete.  
 
 | Param | Type | Description |
 | --- | --- | --- |
@@ -367,7 +367,7 @@ Context is the main application context object. It acts as dependency
 container and is intended to be passed down through all the initialization
 procedure.
 
-**Kind**: global class
+**Kind**: global class  
 
 * [Context](#Context) : <code>Object</code>
     * [.context](#Context+context) ⇒ [<code>Context</code>](#Context)
@@ -394,8 +394,8 @@ module.exports = function setupRoutes({app, context}) {
 }
 ```
 
-**Kind**: instance property of [<code>Context</code>](#Context)
-**Returns**: [<code>Context</code>](#Context) - the context object itself
+**Kind**: instance property of [<code>Context</code>](#Context)  
+**Returns**: [<code>Context</code>](#Context) - the context object itself  
 <a name="Context+set"></a>
 
 #### context.set(keyOrObject, value)
@@ -414,7 +414,7 @@ set({
 });
 ```
 
-**Kind**: instance method of [<code>Context</code>](#Context)
+**Kind**: instance method of [<code>Context</code>](#Context)  
 
 | Param | Type | Description |
 | --- | --- | --- |
@@ -434,9 +434,9 @@ The function to be evaluated can be synchronous or asynchronous. In either
 cases `provide` returns a Promise to wait for to be sure the assignment took
 place (or has been rejected).
 
-**Kind**: instance method of [<code>Context</code>](#Context)
+**Kind**: instance method of [<code>Context</code>](#Context)  
 **Returns**: <code>Promise</code> - a promise that will be resolved once `provide` has completed the
-        assignment or refused to assign.
+        assignment or refused to assign.  
 
 | Param | Type | Description |
 | --- | --- | --- |
@@ -448,8 +448,8 @@ place (or has been rejected).
 #### context.run(...fns) ⇒ <code>Promise</code>
 Run invokes one or more asynchronous function passing the context as first parameter.
 
-**Kind**: instance method of [<code>Context</code>](#Context)
-**Returns**: <code>Promise</code> - a promise that will be resolved once `fn` will complete.
+**Kind**: instance method of [<code>Context</code>](#Context)  
+**Returns**: <code>Promise</code> - a promise that will be resolved once `fn` will complete.  
 
 | Param | Type | Description |
 | --- | --- | --- |
@@ -468,8 +468,8 @@ const info = await request(`http://localhost:${port}/api/info`);
 // ...
 ```
 
-**Kind**: instance method of [<code>Context</code>](#Context)
-**Returns**: <code>Any</code> - the value if found or `defaultValue`.
+**Kind**: instance method of [<code>Context</code>](#Context)  
+**Returns**: <code>Any</code> - the value if found or `defaultValue`.  
 
 | Param | Type | Description |
 | --- | --- | --- |
@@ -519,8 +519,8 @@ describe('app', function() {
 });
 ```
 
-**Kind**: global function
-**Returns**: [<code>App</code>](#App) - A bootable `App` instance.
+**Kind**: global function  
+**Returns**: [<code>App</code>](#App) - A bootable `App` instance.  
 
 | Param | Type | Description |
 | --- | --- | --- |
