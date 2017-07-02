@@ -4,6 +4,10 @@
 
 Application and dependencies bootstrap for node.js.
 
+``` sh
+npm install --save bootwire
+```
+
 ## A super-minimal way to boot and compose application dependencies using ES6.
 
 Bootwire is a very simple library that leverages ES6 destructuring
