@@ -1,6 +1,6 @@
 # bootwire
 
-[![Build Status](https://travis-ci.org/mcasimir/bootwire.svg?branch=master)](https://travis-ci.org/mcasimir/bbootwire) [![codecov](https://codecov.io/gh/mcasimir/bootwire/branch/master/graph/badge.svg)](https://codecov.io/gh/mcasimir/bootwire)
+[![Build Status](https://travis-ci.org/mcasimir/bootwire.svg?branch=master)](https://travis-ci.org/mcasimir/bootwire) [![codecov](https://codecov.io/gh/mcasimir/bootwire/branch/master/graph/badge.svg)](https://codecov.io/gh/mcasimir/bootwire)
 
 Application and dependencies bootstrap for node.js.
 
