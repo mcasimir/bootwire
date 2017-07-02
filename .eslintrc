@@ -1,0 +1,72 @@
+---
+extends:
+- eslint:recommended
+- google
+plugins:
+- no-async-without-await
+env:
+  es6: true
+  node: true
+parserOptions:
+  ecmaVersion: 8
+  sourceType: module
+rules:
+  strict:
+  - error
+  - never
+  new-cap: 0
+  no-console:
+  - 1
+  - allow:
+    - info
+    - time
+    - warn
+    - error
+    - timeEnd
+  quotes:
+  - error
+  - single
+  no-unused-vars:
+  - error
+  - args: after-used
+  eqeqeq: 2
+  complexity:
+  - 1
+  - 10
+  max-len:
+  - error
+  - 160
+  max-nested-callbacks:
+  - error
+  - 5
+  no-var: 2
+  comma-dangle:
+  - error
+  - never
+  no-mixed-spaces-and-tabs: 2
+  quote-props:
+  - error
+  - as-needed
+  require-jsdoc: 0
+  generator-star-spacing: 0
+  handle-callback-err: 2
+  prefer-const: 2
+  no-const-assign: 2
+  object-curly-spacing: 0
+  indent:
+  - error
+  - 2
+  arrow-parens:
+  - error
+  - always
+  padded-blocks: 0
+  no-invalid-this: 0
+  no-async-without-await/no-async-without-await:
+  - error
+  - allow-throw
+  valid-jsdoc: 0
+  space-infix-ops: error
+  keyword-spacing:
+  - error
+  - before: true
+    after: true

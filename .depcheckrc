@@ -1,0 +1,7 @@
+{
+  "ignore": [
+    "jsdoc-strip-async-await",
+    "pre-commit",
+    "sinon"
+  ]
+}
