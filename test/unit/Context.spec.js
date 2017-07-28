@@ -109,11 +109,11 @@ describe('bootwire', function() {
     });
   });
 
-  describe('run', function() {
+  describe('wire', function() {
     it('runs with context', async function() {
       const context = new Context();
 
-      await context.run(function(ctx) {
+      await context.wire(function(ctx) {
         ctx.x = 2;
       });
 
@@ -123,10 +123,10 @@ describe('bootwire', function() {
     it('is bound to the context', async function() {
       const context = new Context();
 
-      const {run} = context;
+      const {wire} = context;
 
       let x;
-      await run(function() {
+      await wire(function() {
         x = 2;
       });
 

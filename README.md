@@ -41,7 +41,7 @@ and perform dependency injection.
     + [context.context ⇒ [Context](#Context)](#contextcontext-%E2%87%92-context%23context)
     + [context.set(keyOrObject, value)](#contextsetkeyorobject-value)
     + [context.provide(key, fn) ⇒ Promise](#contextprovidekey-fn-%E2%87%92-promise)
-    + [context.run(...fns) ⇒ Promise](#contextrunfns-%E2%87%92-promise)
+    + [context.wire(...fns) ⇒ Promise](#contextrunfns-%E2%87%92-promise)
     + [context.get(key, [defaultValue]) ⇒ Any](#contextgetkey-defaultvalue-%E2%87%92-any)
   * [bootwire(bootAndWireFn) ⇒ [App](#App)](#bootwirebootandwirefn-%E2%87%92-app%23app)
 
@@ -55,7 +55,7 @@ The __context object__ is just an object that exposes a few methods to manipulat
 
 - `set`: set one or many properties
 - `provide`: set a property to the result of the invocation of a provider function.
-- `run`: run a function passing the context as parameter
+- `wire`: wire a function passing the context as parameter
 - `get`: get a value in the context by key or by path
 
 Using `set` and `provide` on the context object will ensure that all of its properties **will be only set once**, allowing to inject providers, services connections, configs and so on during tests.
@@ -82,7 +82,7 @@ require('./app').boot().catch(console.error);
 
 const bootwire = require('bootwire');
 
-function bootProcedure({provide, set, run} /* this is the context object destructured */) {
+function bootProcedure({provide, set, wire} /* this is the context object destructured */) {
   set({
     logger: require('winston'),
     config: require('./config')
@@ -96,7 +96,7 @@ function bootProcedure({provide, set, run} /* this is the context object destruc
     return new UserRepository({db});
   });
 
-  await run(startExpress);
+  await wire(startExpress);
 }
 
 module.exports = bootwire(bootProcedure);
@@ -186,14 +186,14 @@ const setupRoutes = require('./setupRoutes');
 const setupMiddlewares = require('./setupMiddlewares');
 const setupErrorHandlers = require('./setupErrorHandlers');
 
-module.exports = function({run, context}) {
+module.exports = function({wire, context}) {
   set({
     config: require('./config'),
     app: express(),
     logger: winston
   });
 
-  await run(
+  await wire(
     setupMiddlewares,
     setupRoutes,
     setupErrorHandlers,
@@ -214,7 +214,7 @@ const {promisify} = require('util');
 const express = require('express');
 const winston = require('winston');
 
-module.exports = function({run, context}) {
+module.exports = function({wire, context}) {
   set({
     config: require('./config'),
     app: express(),
@@ -224,10 +224,10 @@ module.exports = function({run, context}) {
   const submodules = ['module1', 'module2', 'module3'];
 
   for (submodule of submodules) {
-    await run(submodule.boot);
+    await wire(submodule.boot);
   }
 
-  await run(async function({app, logger}) {
+  await wire(async function({app, logger}) {
     await promisify(app.listen)(config.port);
     logger(`Application running on port ${config.port}`);
   });
@@ -364,7 +364,7 @@ Start an application with an initialContext
 
 | Param | Type | Description |
 | --- | --- | --- |
-| ...initialContext | <code>Object</code> | One or more object to be merged in the context and build the         initialContext.         Note that any function already present in the prototype of         Context (ie. run, set, provide) will NOT be overriden. |
+| ...initialContext | <code>Object</code> | One or more object to be merged in the context and build the         initialContext.         Note that any function already present in the prototype of         Context (ie. wire, set, provide) will NOT be overriden. |
 
 <a name="Context"></a>
 
@@ -379,7 +379,7 @@ procedure.
     * [.context](#Context+context) ⇒ [<code>Context</code>](#Context)
     * [.set(keyOrObject, value)](#Context+set)
     * [.provide(key, fn)](#Context+provide) ⇒ <code>Promise</code>
-    * [.run(...fns)](#Context+run) ⇒ <code>Promise</code>
+    * [.wire(...fns)](#Context+wire) ⇒ <code>Promise</code>
     * [.get(key, [defaultValue])](#Context+get) ⇒ <code>Any</code>
 
 <a name="Context+context"></a>
@@ -449,9 +449,9 @@ place (or has been rejected).
 | key | <code>String</code> | the key to be assigned |
 | fn | <code>function</code> | the function to be evaluated. Context will be passed as param to         this function. |
 
-<a name="Context+run"></a>
+<a name="Context+wire"></a>
 
-#### context.run(...fns) ⇒ <code>Promise</code>
+#### context.wire(...fns) ⇒ <code>Promise</code>
 Run invokes one or more asynchronous function passing the context as first parameter.
 
 **Kind**: instance method of [<code>Context</code>](#Context)
