@@ -1,5 +1,5 @@
 const Context = require('../../lib/Context');
-const {equal, deepEqual} = require('assert');
+const {equal, deepEqual, throws} = require('assert');
 const {pick} = require('lodash');
 
 describe('bootwire', function() {
@@ -107,6 +107,19 @@ describe('bootwire', function() {
 
       equal(context.x, 2);
     });
+
+    it('does not need to be awaited if the factory function is not asynchronous', function() {
+      const context = new Context();
+
+      const {provide} = context;
+
+      throws(() => {
+        provide('x', function() {
+          throw new Error('factory function error');
+        });
+      }, /factory function error/);
+    });
+
   });
 
   describe('wire', function() {

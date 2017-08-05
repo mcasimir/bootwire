@@ -17,7 +17,9 @@
   },
   "precommit": "test:ci",
   "license": "UNLICENSED",
-  "dependencies": {},
+  "dependencies": {
+    "lodash": "4.17.4"
+  },
   "devDependencies": {
     "depcheck-ci": "1.0.1",
     "eslint": "4.1.1",
