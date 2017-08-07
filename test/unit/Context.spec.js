@@ -3,11 +3,11 @@ const {equal, deepEqual, throws} = require('assert');
 const {pick} = require('lodash');
 
 describe('bootwire', function() {
-  describe('set', function() {
+  describe('$set', function() {
     it('sets a key that does not exists', function() {
       const context = new Context();
 
-      context.set('x', 2);
+      context.$set('x', 2);
 
       equal(context.x, 2);
     });
@@ -16,7 +16,7 @@ describe('bootwire', function() {
       const context = new Context();
 
       context.x = 2;
-      context.set('x', 3);
+      context.$set('x', 3);
 
       equal(context.x, 2);
     });
@@ -24,7 +24,7 @@ describe('bootwire', function() {
     it('sets many keys at once', function() {
       const context = new Context();
 
-      context.set({
+      context.$set({
         x: 2,
         y: 3
       });
@@ -39,7 +39,7 @@ describe('bootwire', function() {
       const context = new Context();
       context.x = 2;
 
-      context.set({
+      context.$set({
         x: 3,
         y: 3
       });
@@ -53,20 +53,20 @@ describe('bootwire', function() {
     it('is bound to the context', function() {
       const context = new Context();
 
-      const {set} = context;
+      const {$set} = context;
 
-      set('x', 2);
+      $set('x', 2);
 
       equal(context.x, 2);
     });
   });
 
-  describe('provide', function() {
+  describe('$provide', function() {
     it('sets a key as result of evaluated sync function', async function() {
       const context = new Context();
 
 
-      await context.provide('x', function() {
+      await context.$provide('x', function() {
         return 2;
       });
 
@@ -77,7 +77,7 @@ describe('bootwire', function() {
       const context = new Context();
 
 
-      await context.provide('x', function() {
+      await context.$provide('x', function() {
         return Promise.resolve(2);
       });
 
@@ -89,7 +89,7 @@ describe('bootwire', function() {
 
       context.x = 2;
 
-      await context.provide('x', function() {
+      await context.$provide('x', function() {
         return 3;
       });
 
@@ -99,9 +99,9 @@ describe('bootwire', function() {
     it('is bound to the context', async function() {
       const context = new Context();
 
-      const {provide} = context;
+      const {$provide} = context;
 
-      await provide('x', function() {
+      await $provide('x', function() {
         return 2;
       });
 
@@ -111,10 +111,10 @@ describe('bootwire', function() {
     it('does not need to be awaited if the factory function is not asynchronous', function() {
       const context = new Context();
 
-      const {provide} = context;
+      const {$provide} = context;
 
       throws(() => {
-        provide('x', function() {
+        $provide('x', function() {
           throw new Error('factory function error');
         });
       }, /factory function error/);
@@ -122,11 +122,11 @@ describe('bootwire', function() {
 
   });
 
-  describe('wire', function() {
+  describe('$wire', function() {
     it('runs with context', async function() {
       const context = new Context();
 
-      await context.wire(function(ctx) {
+      await context.$wire(function(ctx) {
         ctx.x = 2;
       });
 
@@ -136,10 +136,10 @@ describe('bootwire', function() {
     it('is bound to the context', async function() {
       const context = new Context();
 
-      const {wire} = context;
+      const {$wire} = context;
 
       let x;
-      await wire(function() {
+      await $wire(function() {
         x = 2;
       });
 
@@ -147,11 +147,11 @@ describe('bootwire', function() {
     });
   });
 
-  describe('get', function() {
+  describe('$get', function() {
     it('returns a key', function() {
       const context = new Context();
       context.x = 2;
-      equal(context.get('x'), 2);
+      equal(context.$get('x'), 2);
     });
 
     it('returns a path', function() {
@@ -160,7 +160,7 @@ describe('bootwire', function() {
         y: 2
       };
 
-      equal(context.get('x.y'), 2);
+      equal(context.$get('x.y'), 2);
     });
 
     it('returns a defaultValue', function() {
@@ -169,7 +169,7 @@ describe('bootwire', function() {
         y: 2
       };
 
-      equal(context.get('x.z', 4), 4);
+      equal(context.$get('x.z', 4), 4);
     });
 
     it('returns undefined if not found', function() {
@@ -178,31 +178,31 @@ describe('bootwire', function() {
         y: 2
       };
 
-      equal(context.get('x.z'), undefined);
+      equal(context.$get('x.z'), undefined);
     });
 
     it('is bound to the context', function() {
       const context = new Context();
       context.x = 2;
 
-      const {get} = context;
+      const {$get} = context;
 
-      equal(get('x'), 2);
+      equal($get('x'), 2);
     });
   });
 
-  describe('context', function() {
+  describe('$context', function() {
     it('returns itself', function() {
       const context = new Context();
-      equal(context, context.context);
+      equal(context, context.$context);
     });
 
     it('is bound to the context', function() {
       const contextOrig = new Context();
       contextOrig.x = 2;
 
-      const {context} = contextOrig;
-      equal(context.x, 2);
+      const {$context} = contextOrig;
+      equal($context.x, 2);
     });
   });
 });

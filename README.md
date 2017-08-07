@@ -39,9 +39,9 @@ and perform dependency injection.
     + [app.boot(...initialContext) ⇒ Promise](#appbootinitialcontext-%E2%87%92-promise)
   * [Context : Object](#context--object)
     + [context.context ⇒ [Context](#Context)](#contextcontext-%E2%87%92-context%23context)
-    + [context.set(keyOrObject, value)](#contextsetkeyorobject-value)
-    + [context.provide(key, fn) ⇒ Promise](#contextprovidekey-fn-%E2%87%92-promise)
-    + [context.wire(...fns) ⇒ Promise](#contextrunfns-%E2%87%92-promise)
+    + [context.$$set(keyOrObject, value)](#contextsetkeyorobject-value)
+    + [context.$provide(key, fn) ⇒ Promise](#contextprovidekey-fn-%E2%87%92-promise)
+    + [context.$wire(...fns) ⇒ Promise](#contextrunfns-%E2%87%92-promise)
     + [context.get(key, [defaultValue]) ⇒ Any](#contextgetkey-defaultvalue-%E2%87%92-any)
   * [bootwire(bootAndWireFn) ⇒ [App](#App)](#bootwirebootandwirefn-%E2%87%92-app%23app)
 
@@ -53,12 +53,12 @@ Bootwire provides a way to create an **application context** and pass it down to
 
 The __context object__ is just an object that exposes a few methods to manipulate and use it:
 
-- `set`: set one or many properties
-- `provide`: set a property to the result of the invocation of a provider function.
-- `wire`: wire a function passing the context as parameter
-- `get`: get a value in the context by key or by path
+- `$set`: set one or many properties
+- `$provide`: set a property to the result of the invocation of a provider function.
+- `$wire`: wire a function passing the context as parameter
+- `$get`: get a value in the context by key or by path
 
-Using `set` and `provide` on the context object will ensure that all of its properties **will be only set once**, allowing to inject providers, services connections, configs and so on during tests.
+Using `$set` and `$provide` on the context object will ensure that all of its properties **will be only set once**, allowing to inject providers, services connections, configs and so on during tests.
 
 The __boot procedure__ to which the context is passed is a function that acts as the single starting point of an application.
 
@@ -82,21 +82,21 @@ require('./app').boot().catch(console.error);
 
 const bootwire = require('bootwire');
 
-function bootProcedure({provide, set, wire} /* this is the context object destructured */) {
-  set({
+function bootProcedure({$provide, $set, $wire} /* this is the context object destructured */) {
+  $set({
     logger: require('winston'),
     config: require('./config')
   });
 
-  await provide('db', async function({config}) {
+  await $provide('db', async function({config}) {
     return await MongoClient.connect(config.mongodbUrl);
   });
 
-  await provide('userRepository', async function({db}) {
+  await $provide('userRepository', async function({db}) {
     return new UserRepository({db});
   });
 
-  await wire(startExpress);
+  await $wire(startExpress);
 }
 
 module.exports = bootwire(bootProcedure);
@@ -148,7 +148,7 @@ it('retrieves all the users', async function() {
 ```
 
 The boot procedure also accepts multiple initial contexts that will be merged
-together, doing so will be easy to provide a default initial context on each tests
+together, doing so will be easy to $provide a default initial context on each tests
 and override it on each test case:
 
 ``` js
@@ -186,14 +186,14 @@ const setupRoutes = require('./setupRoutes');
 const setupMiddlewares = require('./setupMiddlewares');
 const setupErrorHandlers = require('./setupErrorHandlers');
 
-module.exports = function({wire, context}) {
-  set({
+module.exports = function({$wire, context}) {
+  $set({
     config: require('./config'),
     app: express(),
     logger: winston
   });
 
-  await wire(
+  await $wire(
     setupMiddlewares,
     setupRoutes,
     setupErrorHandlers,
@@ -214,8 +214,8 @@ const {promisify} = require('util');
 const express = require('express');
 const winston = require('winston');
 
-module.exports = function({wire, context}) {
-  set({
+module.exports = function({$wire, context}) {
+  $set({
     config: require('./config'),
     app: express(),
     logger: winston
@@ -224,10 +224,10 @@ module.exports = function({wire, context}) {
   const submodules = ['module1', 'module2', 'module3'];
 
   for (submodule of submodules) {
-    await wire(submodule.boot);
+    await $wire(submodule.boot);
   }
 
-  await wire(async function({app, logger}) {
+  await $wire(async function({app, logger}) {
     await promisify(app.listen)(config.port);
     logger(`Application running on port ${config.port}`);
   });
@@ -266,12 +266,12 @@ Note how the `UserRepository` class is completely usable both with `bootwire`:
 ``` js
 // boot/index.js
 
-module.exports = function({provide}) {
-  await provide('db', async function({config}) {
+module.exports = function({$provide}) {
+  await $provide('db', async function({config}) {
     return await MongoClient.connect(config.mongodbUrl);
   });
 
-  await provide('userRepository', async function({db}) {
+  await $provide('userRepository', async function({db}) {
     return new UserRepository({db});
   });
 };
@@ -312,7 +312,7 @@ procedure.</p>
 
 <dl>
 <dt><a href="#bootwire">bootwire(bootAndWireFn)</a> ⇒ <code><a href="#App">App</a></code></dt>
-<dd><p>Build a new App that will use invoke the boot and wire procedure passed
+<dd><p>Build a new App that will use invoke the boot and $wire procedure passed
 as parameter on boot.</p>
 <p>Example usage:</p>
 <pre><code class="language-javascript">const bootwire = require(&#39;bootwire&#39;);
@@ -364,7 +364,7 @@ Start an application with an initialContext
 
 | Param | Type | Description |
 | --- | --- | --- |
-| ...initialContext | <code>Object</code> | One or more object to be merged in the context and build the         initialContext.         Note that any function already present in the prototype of         Context (ie. wire, set, provide) will NOT be overriden. |
+| ...initialContext | <code>Object</code> | One or more object to be merged in the context and build the         initialContext.         Note that any function already present in the prototype of         Context (ie. $wire, $set, $provide) will NOT be overriden. |
 
 <a name="Context"></a>
 
@@ -377,9 +377,9 @@ procedure.
 
 * [Context](#Context) : <code>Object</code>
     * [.context](#Context+context) ⇒ [<code>Context</code>](#Context)
-    * [.set(keyOrObject, value)](#Context+set)
-    * [.provide(key, fn)](#Context+provide) ⇒ <code>Promise</code>
-    * [.wire(...fns)](#Context+wire) ⇒ <code>Promise</code>
+    * [.$$set(keyOrObject, value)](#Context+set)
+    * [.$provide(key, fn)](#Context+$provide) ⇒ <code>Promise</code>
+    * [.$wire(...fns)](#Context+$wire) ⇒ <code>Promise</code>
     * [.get(key, [defaultValue])](#Context+get) ⇒ <code>Any</code>
 
 <a name="Context+context"></a>
@@ -404,17 +404,17 @@ module.exports = function setupRoutes({app, context}) {
 **Returns**: [<code>Context</code>](#Context) - the context object itself
 <a name="Context+set"></a>
 
-#### context.set(keyOrObject, value)
+#### context.$$set(keyOrObject, value)
 Set one or more keys in the context if they are not already present.
 
 ie.
 
 ``` js
-set('logger', winston);
+$set('logger', winston);
 ```
 
 ``` js
-set({
+$set({
   config: require('./config'),
   logger: winston
 });
@@ -427,21 +427,21 @@ set({
 | keyOrObject | <code>String</code> \| <code>Object</code> | a string key in case of single assignment or a key-value map in case        of multiple assignment. |
 | value | <code>Any</code> | the value to be assigned in case a string key is provided. |
 
-<a name="Context+provide"></a>
+<a name="Context+$provide"></a>
 
-#### context.provide(key, fn) ⇒ <code>Promise</code>
+#### context.$provide(key, fn) ⇒ <code>Promise</code>
 Provide allows to assign to a context key the result of a function (provider)
 that is invoked with context as parameter.
 
-If the context key is already taken the `provide` returns without doing
+If the context key is already taken the `$provide` returns without doing
 anything.
 
 The function to be evaluated can be synchronous or asynchronous. In either
-cases `provide` returns a Promise to wait for to be sure the assignment took
+cases `$provide` returns a Promise to wait for to be sure the assignment took
 place (or has been rejected).
 
 **Kind**: instance method of [<code>Context</code>](#Context)
-**Returns**: <code>Promise</code> - a promise that will be resolved once `provide` has completed the
+**Returns**: <code>Promise</code> - a promise that will be resolved once `$provide` has completed the
         assignment or refused to assign.
 
 | Param | Type | Description |
@@ -449,9 +449,9 @@ place (or has been rejected).
 | key | <code>String</code> | the key to be assigned |
 | fn | <code>function</code> | the function to be evaluated. Context will be passed as param to         this function. |
 
-<a name="Context+wire"></a>
+<a name="Context+$wire"></a>
 
-#### context.wire(...fns) ⇒ <code>Promise</code>
+#### context.$wire(...fns) ⇒ <code>Promise</code>
 Run invokes one or more asynchronous function passing the context as first parameter.
 
 **Kind**: instance method of [<code>Context</code>](#Context)
@@ -485,7 +485,7 @@ const info = await request(`http://localhost:${port}/api/info`);
 <a name="bootwire"></a>
 
 ### bootwire(bootAndWireFn) ⇒ [<code>App</code>](#App)
-Build a new App that will use invoke the boot and wire procedure passed
+Build a new App that will use invoke the boot and $wire procedure passed
 as parameter on boot.
 
 Example usage:
