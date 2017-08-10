@@ -30,6 +30,7 @@ and perform dependency injection.
     + [Dependency injection](#dependency-injection)
 - [Usage patterns for complex applications](#usage-patterns-for-complex-applications)
     + [Split bootstrap into phases](#split-bootstrap-into-phases)
+    + [Top Down $wireGlob](#top-down-wireglob)
     + [Bootstrap of many components](#bootstrap-of-many-components)
     + [Wiring classes and services](#wiring-classes-and-services)
 - [Api](#api)
@@ -38,11 +39,13 @@ and perform dependency injection.
   * [App : Object](#app--object)
     + [app.boot(...initialContext) ⇒ Promise](#appbootinitialcontext-%E2%87%92-promise)
   * [Context : Object](#context--object)
-    + [context.context ⇒ [Context](#Context)](#contextcontext-%E2%87%92-context%23context)
-    + [context.$$set(keyOrObject, value)](#contextsetkeyorobject-value)
+    + [context.$context ⇒ [Context](#Context)](#contextcontext-%E2%87%92-context%23context)
+    + [context.$set(keyOrObject, value)](#contextsetkeyorobject-value)
     + [context.$provide(key, fn) ⇒ Promise](#contextprovidekey-fn-%E2%87%92-promise)
-    + [context.$wire(...fns) ⇒ Promise](#contextrunfns-%E2%87%92-promise)
-    + [context.get(key, [defaultValue]) ⇒ Any](#contextgetkey-defaultvalue-%E2%87%92-any)
+    + [context.$wire(...fns) ⇒ Promise](#contextwirefns-%E2%87%92-promise)
+    + [context.$wireGlob(...patterns) ⇒ Promise](#contextwireglobpatterns-%E2%87%92-promise)
+    + [context.$waitFor(...keys) ⇒ Promise](#contextwaitforkeys-%E2%87%92-promise)
+    + [context.$get(key, [defaultValue]) ⇒ Any](#contextgetkey-defaultvalue-%E2%87%92-any)
   * [bootwire(bootAndWireFn) ⇒ [App](#App)](#bootwirebootandwirefn-%E2%87%92-app%23app)
 
 <!-- tocstop -->
@@ -56,6 +59,8 @@ The __context object__ is just an object that exposes a few methods to manipulat
 - `$set`: set one or many properties
 - `$provide`: set a property to the result of the invocation of a provider function.
 - `$wire`: wire a function passing the context as parameter
+- `$wireGlob`: wire any files matching a glob pattern
+- `$waitFor`: await for specific dependencies to be wired
 - `$get`: get a value in the context by key or by path
 
 Using `$set` and `$provide` on the context object will ensure that all of its properties **will be only set once**, allowing to inject providers, services connections, configs and so on during tests.
@@ -182,55 +187,92 @@ const {promisify} = require('util');
 const express = require('express');
 const winston = require('winston');
 
-const setupRoutes = require('./setupRoutes');
-const setupMiddlewares = require('./setupMiddlewares');
-const setupErrorHandlers = require('./setupErrorHandlers');
+module.exports = async function({$wireGlob, $set, $context}) {
+  const config = require('./config');
+  const app = express();
+  const logger = winston;
 
-module.exports = function({$wire, context}) {
   $set({
-    config: require('./config'),
-    app: express(),
-    logger: winston
+    config,
+    app,
+    logger
   });
 
-  await $wire(
-    setupMiddlewares,
-    setupRoutes,
-    setupErrorHandlers,
-    async function({app, logger}) {
-      await promisify(app.listen)(config.port);
-      logger(`Application running on port ${config.port}`);
-    }
-  );
+  await $wireGlob('./services/**/*.wire.js');
+  await $wireGlob('./middlewares/**/*.wire.js');
+  await $wireGlob('./routes/**/*.wire.js');
+
+  await promisify(app.listen)(config.port);
+  logger(`Application running on port ${config.port}`);
+};
+```
+
+#### Top Down $wireGlob
+
+`$wireGlob` never process a file twice and ensure files are always processed in
+depth order from the most generic path to the deepest.
+
+It can be leveraged to delegate complex wiring from a general boot file to more
+specialized procedures.
+
+``` js
+// ./index.js
+
+const {promisify} = require('util');
+const express = require('express');
+
+module.exports = async function({$wireGlob, $set, $context}) {
+  const app = express();
+
+  $set({
+    app
+  });
+
+  await $wireGlob('./routes/**/*.wire.js');
+  await promisify(app.listen)(config.port);
+};
+```
+
+``` js
+// ./routes/wire.js
+
+module.exports = async function({$wireGlob, $set, $context}) {
+  await $wireGlob('./middlewares/**/*.middeware.js');
+  await $wireGlob('./api/**/wire.js'); // NOTE: this will be processed only once
+                                       // and from this file even if the path
+                                       // matches also the glob from the call in
+                                       // ./index.js
 };
 ```
 
 #### Bootstrap of many components
 
+Using `$wireGlob` and `$waitFor` is possible to create self contained modules that
+can be wired together without having a main boot procedure knowing about everything.
+
 ``` js
 // ./boot/index.js
 
-const {promisify} = require('util');
-const express = require('express');
-const winston = require('winston');
+module.exports = async function({$wireGlob}) {
+  await $wireGlob('./*.wire.js');
+};
+```
 
-module.exports = function({$wire, context}) {
-  $set({
-    config: require('./config'),
-    app: express(),
-    logger: winston
-  });
+``` js
+// ./boot/logger.wire.js
 
-  const submodules = ['module1', 'module2', 'module3'];
+module.exports = async function({$waitFor, $set}) {
+  const {correlator} = await $waitFor('correlator');
 
-  for (submodule of submodules) {
-    await $wire(submodule.boot);
-  }
+  $set('logger', new CorrelationLogger(correlator));
+};
+```
 
-  await $wire(async function({app, logger}) {
-    await promisify(app.listen)(config.port);
-    logger(`Application running on port ${config.port}`);
-  });
+``` js
+// ./boot/correlator.wire.js
+
+module.exports = function({$set}) {
+  $set('correlator', new ZoneCorrelator());
 };
 ```
 
@@ -302,7 +344,7 @@ main().catch(console.error);
 <dd><p>App is a bootable application.</p>
 </dd>
 <dt><a href="#Context">Context</a> : <code>Object</code></dt>
-<dd><p>Context is the main application context object. It acts as dependency
+<dd><p><code>Context</code> is the main application context object. It acts as dependency
 container and is intended to be passed down through all the initialization
 procedure.</p>
 </dd>
@@ -353,14 +395,14 @@ describe(&#39;app&#39;, function() {
 ### App : <code>Object</code>
 App is a bootable application.
 
-**Kind**: global class
+**Kind**: global class  
 <a name="App+boot"></a>
 
 #### app.boot(...initialContext) ⇒ <code>Promise</code>
 Start an application with an initialContext
 
-**Kind**: instance method of [<code>App</code>](#App)
-**Returns**: <code>Promise</code> - A promise resolving to Context when the boot procedure will complete.
+**Kind**: instance method of [<code>App</code>](#App)  
+**Returns**: <code>Promise</code> - A promise resolving to Context when the boot procedure will complete.  
 
 | Param | Type | Description |
 | --- | --- | --- |
@@ -369,22 +411,24 @@ Start an application with an initialContext
 <a name="Context"></a>
 
 ### Context : <code>Object</code>
-Context is the main application context object. It acts as dependency
+`Context` is the main application context object. It acts as dependency
 container and is intended to be passed down through all the initialization
 procedure.
 
-**Kind**: global class
+**Kind**: global class  
 
 * [Context](#Context) : <code>Object</code>
-    * [.context](#Context+context) ⇒ [<code>Context</code>](#Context)
-    * [.$$set(keyOrObject, value)](#Context+set)
+    * [.$context](#Context+$context) ⇒ [<code>Context</code>](#Context)
+    * [.$set(keyOrObject, value)](#Context+$set)
     * [.$provide(key, fn)](#Context+$provide) ⇒ <code>Promise</code>
     * [.$wire(...fns)](#Context+$wire) ⇒ <code>Promise</code>
-    * [.get(key, [defaultValue])](#Context+get) ⇒ <code>Any</code>
+    * [.$wireGlob(...patterns)](#Context+$wireGlob) ⇒ <code>Promise</code>
+    * [.$waitFor(...keys)](#Context+$waitFor) ⇒ <code>Promise</code>
+    * [.$get(key, [defaultValue])](#Context+$get) ⇒ <code>Any</code>
 
-<a name="Context+context"></a>
+<a name="Context+$context"></a>
 
-#### context.context ⇒ [<code>Context</code>](#Context)
+#### context.$context ⇒ [<code>Context</code>](#Context)
 Returns the same context instance.
 
 Useful in factory and provider functions to destructure both the context
@@ -400,12 +444,12 @@ module.exports = function setupRoutes({app, context}) {
 }
 ```
 
-**Kind**: instance property of [<code>Context</code>](#Context)
-**Returns**: [<code>Context</code>](#Context) - the context object itself
-<a name="Context+set"></a>
+**Kind**: instance property of [<code>Context</code>](#Context)  
+**Returns**: [<code>Context</code>](#Context) - the context object itself  
+<a name="Context+$set"></a>
 
-#### context.$$set(keyOrObject, value)
-Set one or more keys in the context if they are not already present.
+#### context.$set(keyOrObject, value)
+`$set` sets one or more keys in the context if they are not already present.
 
 ie.
 
@@ -420,7 +464,7 @@ $set({
 });
 ```
 
-**Kind**: instance method of [<code>Context</code>](#Context)
+**Kind**: instance method of [<code>Context</code>](#Context)  
 
 | Param | Type | Description |
 | --- | --- | --- |
@@ -430,7 +474,7 @@ $set({
 <a name="Context+$provide"></a>
 
 #### context.$provide(key, fn) ⇒ <code>Promise</code>
-Provide allows to assign to a context key the result of a function (provider)
+`$provide` allows to assign to a contpext key the result of a function (provider)
 that is invoked with context as parameter.
 
 If the context key is already taken the `$provide` returns without doing
@@ -440,9 +484,9 @@ The function to be evaluated can be synchronous or asynchronous. In either
 cases `$provide` returns a Promise to wait for to be sure the assignment took
 place (or has been rejected).
 
-**Kind**: instance method of [<code>Context</code>](#Context)
+**Kind**: instance method of [<code>Context</code>](#Context)  
 **Returns**: <code>Promise</code> - a promise that will be resolved once `$provide` has completed the
-        assignment or refused to assign.
+        assignment or refused to assign.  
 
 | Param | Type | Description |
 | --- | --- | --- |
@@ -452,18 +496,55 @@ place (or has been rejected).
 <a name="Context+$wire"></a>
 
 #### context.$wire(...fns) ⇒ <code>Promise</code>
-Run invokes one or more asynchronous function passing the context as first parameter.
+`$wire` invokes one or more asynchronous function passing the context as first parameter.
 
-**Kind**: instance method of [<code>Context</code>](#Context)
-**Returns**: <code>Promise</code> - a promise that will be resolved once `fn` will complete.
+**Kind**: instance method of [<code>Context</code>](#Context)  
+**Returns**: <code>Promise</code> - a promise that will be resolved once `fn` will complete.  
 
 | Param | Type | Description |
 | --- | --- | --- |
 | ...fns | <code>function</code> | the function or functions to be evaluated. Context will be passed as param. |
 
-<a name="Context+get"></a>
+<a name="Context+$wireGlob"></a>
 
-#### context.get(key, [defaultValue]) ⇒ <code>Any</code>
+#### context.$wireGlob(...patterns) ⇒ <code>Promise</code>
+`$wireGlob` requires and wires files by patterns from the caller folder.
+
+ie.
+
+``` js
+await $wireGlob('routes/*.wire.js');
+```
+
+**Kind**: instance method of [<code>Context</code>](#Context)  
+**Returns**: <code>Promise</code> - A promise that will be resolved once all the files are required
+        and wired  
+
+| Param | Type | Description |
+| --- | --- | --- |
+| ...patterns | <code>String</code> | One or more pattern expression (see https://github.com/isaacs/minimatch#usage for help)         NOTE: path patterns are relative to the caller file and not to `process.cwd()` |
+
+<a name="Context+$waitFor"></a>
+
+#### context.$waitFor(...keys) ⇒ <code>Promise</code>
+`$waitFor` wait for the resolution of the dependencies passed as argument and
+then it returns the context;
+
+```
+const {logger} = await $waitFor('logger');
+```
+
+**Kind**: instance method of [<code>Context</code>](#Context)  
+**Returns**: <code>Promise</code> - A promise resolving to the context once all the dependencies
+        are ready  
+
+| Param | Type | Description |
+| --- | --- | --- |
+| ...keys | <code>String</code> | A list of dependencies to be awaited |
+
+<a name="Context+$get"></a>
+
+#### context.$get(key, [defaultValue]) ⇒ <code>Any</code>
 Get a value from context by key or path.
 
 ``` js
@@ -474,8 +555,8 @@ const info = await request(`http://localhost:${port}/api/info`);
 // ...
 ```
 
-**Kind**: instance method of [<code>Context</code>](#Context)
-**Returns**: <code>Any</code> - the value if found or `defaultValue`.
+**Kind**: instance method of [<code>Context</code>](#Context)  
+**Returns**: <code>Any</code> - the value if found or `defaultValue`.  
 
 | Param | Type | Description |
 | --- | --- | --- |
@@ -525,8 +606,8 @@ describe('app', function() {
 });
 ```
 
-**Kind**: global function
-**Returns**: [<code>App</code>](#App) - A bootable `App` instance.
+**Kind**: global function  
+**Returns**: [<code>App</code>](#App) - A bootable `App` instance.  
 
 | Param | Type | Description |
 | --- | --- | --- |

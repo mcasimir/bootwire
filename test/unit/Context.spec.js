@@ -284,5 +284,24 @@ describe('bootwire', function() {
 
       equal(context.calledTwice, false);
     });
+
+    it('ignores already wired files', async function() {
+      const context = new Context();
+
+      const run = require('./fixtures/wireGlob2/index.js');
+
+      await run(context);
+
+      equal(context.calledTwice, false);
+    });
+
+    it('resolves dependencies top-down', async function() {
+      const context = new Context();
+
+      const run = require('./fixtures/wireGlob2/index.js');
+
+      await run(context);
+      equal(context.y, 2);
+    });
   });
 });
