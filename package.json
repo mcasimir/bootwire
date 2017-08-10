@@ -19,7 +19,7 @@
   "precommit": "test:ci",
   "license": "UNLICENSED",
   "dependencies": {
-    "callsite": "^1.0.0",
+    "callsite": "1.0.0",
     "globby": "6.1.0",
     "lodash": "4.17.4"
   },
