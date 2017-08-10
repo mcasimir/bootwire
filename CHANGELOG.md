@@ -1,3 +1,14 @@
+<a name="v2.0.0"></a>
+# [v2.0.0](https://github.com/mcasimir/bootwire/compare/v1.1.0...v2.0.0)
+
+## Breaking Changes
+
+- recursive $wireGlob, $waitFor. BREAKING ([8ca6bbc](https://github.com/mcasimir/bootwire/commits/8ca6bbc588809a81f6ded050c294d4625ac7e12f))
+
+## Features
+
+- recursive $wireGlob, $waitFor. BREAKING ([8ca6bbc](https://github.com/mcasimir/bootwire/commits/8ca6bbc588809a81f6ded050c294d4625ac7e12f))
+
 <a name="v1.1.0"></a>
 # [v1.1.0](https://github.com/mcasimir/bootwire/compare/v1.0.2...v1.1.0)
 
