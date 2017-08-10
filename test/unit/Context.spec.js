@@ -205,4 +205,84 @@ describe('bootwire', function() {
       equal($context.x, 2);
     });
   });
+
+  describe('$waitFor', function() {
+    it('resolve if a key was present already', async function() {
+      const context = new Context();
+      context.x = 2;
+
+      const {x} = await context.$waitFor('x');
+
+      equal(x, 2);
+    });
+
+    it('resolve if a key was set already', async function() {
+      const context = new Context();
+      context.$set('x', 2);
+
+      const {x} = await context.$waitFor('x');
+
+      equal(x, 2);
+    });
+
+    it('resolve if a key is set after', async function() {
+      const context = new Context();
+
+      setImmediate(() => {
+        context.$set('x', 2);
+      });
+
+      const {x} = await context.$waitFor('x');
+
+      equal(x, 2);
+    });
+
+    it('resolve if a key is provided after', async function() {
+      const context = new Context();
+
+      setImmediate(() => {
+        context.$provide('x', () => {
+          return 2;
+        });
+      });
+
+      const {x} = await context.$waitFor('x');
+
+      equal(x, 2);
+    });
+
+    it('is bound to the context', async function() {
+      const context = new Context();
+      context.x = 2;
+
+      const {$waitFor} = context;
+      const {x} = await $waitFor('x');
+
+      equal(x, 2);
+    });
+  });
+
+  describe('$wireGlob', function() {
+    it('wires starting from caller dirname', async function() {
+      const context = new Context();
+
+      const run = require('./fixtures/wireGlob0');
+
+      await run(context);
+
+      equal(context.x, 2);
+      equal(context.y, 2);
+      equal(context.z, undefined);
+    });
+
+    it('ignores caller file', async function() {
+      const context = new Context();
+
+      const run = require('./fixtures/wireGlob1/index.wire.js');
+
+      await run(context);
+
+      equal(context.calledTwice, false);
+    });
+  });
 });
