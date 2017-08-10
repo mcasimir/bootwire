@@ -1,3 +1,10 @@
+<a name="v2.0.1"></a>
+# [v2.0.1](https://github.com/mcasimir/bootwire/compare/v2.0.0...v2.0.1)
+
+## Fixes
+
+- non strict deps ([fd658f0](https://github.com/mcasimir/bootwire/commits/fd658f0e5969d25f7551352169cecdb62c3fb8ac))
+
 <a name="v2.0.0"></a>
 # [v2.0.0](https://github.com/mcasimir/bootwire/compare/v1.1.0...v2.0.0)
 
