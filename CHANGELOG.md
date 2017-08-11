@@ -1,3 +1,10 @@
+<a name="v2.0.2"></a>
+# [v2.0.2](https://github.com/mcasimir/bootwire/compare/v2.0.1...v2.0.2)
+
+## Fixes
+
+- $waitFor getting stuck waiting for peers with $wireGlob ([6c03634](https://github.com/mcasimir/bootwire/commits/6c0363404e5f2e67215edd31077f0a196390fd4b))
+
 <a name="v2.0.1"></a>
 # [v2.0.1](https://github.com/mcasimir/bootwire/compare/v2.0.0...v2.0.1)
 
