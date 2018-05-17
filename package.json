@@ -21,7 +21,7 @@
   "dependencies": {
     "callsite": "1.0.0",
     "globby": "6.1.0",
-    "lodash": "4.17.4"
+    "lodash": "4.17.10"
   },
   "devDependencies": {
     "depcheck-ci": "1.0.1",
@@ -31,12 +31,12 @@
     "eslint-plugin-no-async-without-await": "1.2.0",
     "injectmd": "1.0.0",
     "jsdoc-strip-async-await": "0.1.0",
-    "jsdoc-to-markdown": "3.0.0",
-    "markdown-toc": "1.1.0",
-    "mocha": "3.4.2",
+    "jsdoc-to-markdown": "4.0.1",
+    "markdown-toc": "1.2.0",
+    "mocha": "5.1.1",
     "npm-run-series": "1.0.0",
-    "nsp": "2.6.3",
-    "nyc": "11.0.3",
+    "nsp": "3.2.1",
+    "nyc": "11.8.0",
     "pre-commit": "1.2.2",
     "release-flow": "1.2.1",
     "sinon": "2.3.6"
