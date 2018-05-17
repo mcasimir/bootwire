@@ -1,3 +1,6 @@
+<a name="v2.0.3"></a>
+# [v2.0.3](https://github.com/mcasimir/bootwire/compare/v2.0.2...v2.0.3)
+
 <a name="v2.0.2"></a>
 # [v2.0.2](https://github.com/mcasimir/bootwire/compare/v2.0.1...v2.0.2)
 
